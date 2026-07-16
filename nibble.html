@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<!-- NIBBLE :: nibble.html :: v1.2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NIBBLE</title>
+<style>
+  /* NIBBLE :: embedded stylesheet :: no external assets, runs from file:// */
+  :root {
+    /* Night (default): dark soldermask panel, VFD-teal readouts, lit-amber bits, copper hairlines */
+    --bg:        #0a0e13;
+    --panel:     #121821;
+    --panel-2:   #0e141c;
+    --ink:       #cfe3dd;
+    --ink-dim:   #7f9992;
+    --copper:    #c0894e;
+    --copper-dim:#6b5330;
+    --readout:   #63e6bd;   /* live values */
+    --readout-bg:#08120f;
+    --bit-on:    #ffb545;   /* set bit */
+    --bit-on-ink:#1a1206;
+    --bit-off:   #1b2530;
+    --bit-off-ink:#5c7169;
+    --accent:    #63e6bd;
+    --good:      #63e6bd;
+    --bad:       #ff7a6b;
+    --warn:      #ffb545;
+    --line:      #24303a;
+    --focus:     #9fe0ff;
+    --field-hue: 165;
+    --radius: 6px;
+    --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  }
+  :root[data-theme="day"] {
+    --bg:        #e9e4d6;
+    --panel:     #f5f1e6;
+    --panel-2:   #ded8c7;
+    --ink:       #23301f;
+    --ink-dim:   #5c6a55;
+    --copper:    #8a5a24;
+    --copper-dim:#c4a878;
+    --readout:   #0d5c44;
+    --readout-bg:#e7efe8;
+    --bit-on:    #b25b00;
+    --bit-on-ink:#fff4e6;
+    --bit-off:   #d3ccbb;
+    --bit-off-ink:#6a7462;
+    --accent:    #0d5c44;
+    --good:      #0d5c44;
+    --bad:       #a3271a;
+    --warn:      #8a5300;
+    --line:      #cbc3ae;
+    --focus:     #1560a8;
+  }
+  :root[data-theme="hc"] {
+    --bg:        #000000;
+    --panel:     #000000;
+    --panel-2:   #000000;
+    --ink:       #ffffff;
+    --ink-dim:   #d9d9d9;
+    --copper:    #ffd24d;
+    --copper-dim:#ffd24d;
+    --readout:   #4dffd2;
+    --readout-bg:#000000;
+    --bit-on:    #ffd24d;
+    --bit-on-ink:#000000;
+    --bit-off:   #000000;
+    --bit-off-ink:#ffffff;
+    --accent:    #4dffd2;
+    --good:      #6bff8f;
+    --bad:       #ff8a7a;
+    --warn:      #ffd24d;
+    --line:      #ffffff;
+    --focus:     #ffffff;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: clamp(14px, 0.55vw + 12px, 16px);
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+  }
+  a { color: var(--accent); }
+  :root[data-theme="hc"] * { border-color: var(--line) !important; }
+
+  /* focus visibility, never stripped */
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 16px clamp(10px, 2vw, 22px) 64px; }
+
+  header.app {
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+    padding-bottom: 12px; border-bottom: 1px solid var(--line);
+  }
+  .logo {
+    font-weight: 700; letter-spacing: 0.28em; font-size: clamp(20px, 2.4vw, 30px);
+    color: var(--readout);
+  }
+  .logo .n { color: var(--bit-on); }
+  .tagline { color: var(--ink-dim); font-size: 12px; letter-spacing: 0.06em; }
+  .ver { color: var(--copper); font-size: 12px; margin-left: auto; letter-spacing: 0.08em; }
+
+  /* tabs */
+  nav.tabs { display: flex; gap: 6px; margin: 14px 0 0; flex-wrap: wrap; }
+  .tab {
+    appearance: none; font: inherit; cursor: pointer;
+    background: var(--panel-2); color: var(--ink-dim);
+    border: 1px solid var(--line); border-bottom: none;
+    padding: 9px 16px; min-height: 44px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    letter-spacing: 0.12em; font-size: 13px;
+  }
+  .tab[aria-selected="true"] { background: var(--panel); color: var(--readout); border-color: var(--copper); }
+  .tab:hover { color: var(--ink); }
+
+  main {
+    background: var(--panel); border: 1px solid var(--copper);
+    border-radius: 0 var(--radius) var(--radius) var(--radius);
+    padding: clamp(12px, 2vw, 22px);
+  }
+  section[role="tabpanel"][hidden] { display: none; }
+
+  h2 { margin: 0 0 4px; font-size: 15px; letter-spacing: 0.14em; color: var(--copper); font-weight: 700; }
+  .hint { color: var(--ink-dim); font-size: 12px; margin: 0 0 16px; }
+
+  .rows { display: grid; gap: 12px; }
+  .field-row { display: grid; grid-template-columns: 92px 1fr; gap: 10px; align-items: center; }
+  @media (max-width: 560px) { .field-row { grid-template-columns: 1fr; gap: 4px; } }
+  label.k { color: var(--ink-dim); letter-spacing: 0.1em; font-size: 12px; }
+
+  input[type="text"], textarea, select {
+    font-family: var(--mono); font-size: 15px;
+    background: var(--readout-bg); color: var(--readout);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 10px 12px; width: 100%; min-height: 44px;
+  }
+  input.mono-ink { color: var(--ink); }
+  textarea { min-height: 88px; resize: vertical; color: var(--ink); }
+  input:focus, textarea:focus, select:focus { border-color: var(--copper); }
+  input[aria-invalid="true"] { border-color: var(--bad); }
+
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .seg button {
+    appearance: none; font: inherit; cursor: pointer; min-height: 44px;
+    background: var(--panel-2); color: var(--ink-dim);
+    border: none; border-right: 1px solid var(--line); padding: 8px 14px; letter-spacing: 0.06em;
+  }
+  .seg button:last-child { border-right: none; }
+  .seg button[aria-pressed="true"] { background: var(--copper); color: var(--bit-on-ink); }
+
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 4px 0 18px; }
+  .toolbar .k { color: var(--ink-dim); font-size: 12px; letter-spacing: 0.1em; }
+
+  button.btn {
+    appearance: none; font: inherit; cursor: pointer; min-height: 44px;
+    background: var(--panel-2); color: var(--ink);
+    border: 1px solid var(--copper); border-radius: var(--radius);
+    padding: 9px 16px; letter-spacing: 0.06em;
+  }
+  button.btn:hover { background: var(--copper); color: var(--bit-on-ink); }
+  button.btn.ghost { border-color: var(--line); }
+  button.btn.ghost:hover { background: var(--panel-2); color: var(--readout); border-color: var(--copper); }
+
+  /* lattice */
+  .lattice-scroll { overflow-x: auto; padding-bottom: 6px; }
+  .lattice { display: grid; grid-auto-flow: column; gap: 4px; min-width: max-content; margin: 6px 0 2px; }
+  .octet-gap { width: 8px; }
+  .bitcell {
+    appearance: none; font: inherit; cursor: pointer;
+    width: 42px; height: 58px; display: grid; grid-template-rows: auto 1fr auto; align-items: center;
+    background: var(--bit-off); color: var(--bit-off-ink);
+    border: 1px solid var(--line); border-radius: 4px; text-align: center; padding: 3px 0;
+  }
+  .bitcell .idx { font-size: 10px; color: var(--ink-dim); }
+  .bitcell .val { font-size: 22px; font-weight: 700; line-height: 1; }
+  .bitcell .wt { font-size: 9px; color: var(--ink-dim); }
+  .bitcell[aria-pressed="true"] { background: var(--bit-on); color: var(--bit-on-ink); border-color: var(--bit-on); }
+  .bitcell[aria-pressed="true"] .idx, .bitcell[aria-pressed="true"] .wt { color: var(--bit-on-ink); }
+  .rail { display: grid; grid-auto-flow: column; gap: 4px; min-width: max-content; margin-bottom: 8px; }
+  .railseg { height: 18px; border-radius: 3px; display: flex; align-items: center; justify-content: center;
+             font-size: 10px; letter-spacing: 0.04em; overflow: hidden; white-space: nowrap; padding: 0 4px; }
+
+  table.grid { border-collapse: collapse; width: 100%; margin-top: 6px; }
+  table.grid th, table.grid td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; font-size: 13px; }
+  table.grid th { color: var(--ink-dim); letter-spacing: 0.08em; font-weight: 400; background: var(--panel-2); }
+  table.grid td.num { color: var(--readout); text-align: right; }
+  table.grid td.check { color: var(--good); }
+
+  .readpanel { background: var(--readout-bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+  .readgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 18px; }
+  .readgrid .cell .k { color: var(--ink-dim); font-size: 11px; letter-spacing: 0.1em; }
+  .readgrid .cell .v { color: var(--readout); font-size: 16px; word-break: break-all; }
+
+  .vrow { display: flex; align-items: center; gap: 8px; }
+  .vrow .v { flex: 1; min-width: 0; }
+  .copybtn {
+    appearance: none; font: inherit; cursor: pointer; flex: none;
+    background: var(--panel-2); color: var(--ink-dim);
+    border: 1px solid var(--line); border-radius: 4px;
+    padding: 6px 10px; min-height: 38px; font-size: 11px; letter-spacing: 0.06em;
+  }
+  .copybtn:hover { color: var(--readout); border-color: var(--copper); }
+  .copybtn.done { color: var(--good); border-color: var(--good); }
+  .verdict-pass { color: var(--good); font-weight: 700; }
+  .verdict-fail { color: var(--bad); font-weight: 700; }
+  .verdict-idle { color: var(--ink-dim); }
+  table.grid td.num .vrow { justify-content: flex-end; }
+
+  .fieldeditor { display: grid; gap: 8px; margin-top: 8px; }
+  .fe-row { display: grid; grid-template-columns: 1.4fr 60px 60px 1.1fr 1.4fr auto; gap: 8px; align-items: center; }
+  @media (max-width: 720px) { .fe-row { grid-template-columns: 1fr 1fr; } }
+  .fe-row input, .fe-row select { min-height: 40px; padding: 7px 9px; font-size: 13px; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; vertical-align: middle; margin-right: 6px; border: 1px solid var(--line); }
+
+  .status { min-height: 20px; font-size: 12px; letter-spacing: 0.04em; margin-top: 6px; }
+  .status.ok { color: var(--good); }
+  .status.err { color: var(--bad); }
+  .status.warn { color: var(--warn); }
+
+  /* dialog */
+  dialog {
+    background: var(--panel); color: var(--ink); border: 1px solid var(--copper);
+    border-radius: var(--radius); max-width: 560px; width: calc(100% - 32px); padding: 0;
+  }
+  dialog::backdrop { background: rgba(0,0,0,0.6); }
+  .dlg-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .dlg-head h3 { margin: 0; font-size: 14px; letter-spacing: 0.14em; color: var(--copper); }
+  .dlg-body { padding: 16px 18px; font-size: 13px; }
+  .dlg-body dt { color: var(--ink-dim); font-size: 11px; letter-spacing: 0.1em; margin-top: 10px; }
+  .dlg-body dd { margin: 2px 0 0; }
+  .dlg-body dd:first-of-type { margin-top: 0; }
+
+  .selftest-line { font-size: 12px; padding: 2px 0; }
+  .selftest-line.p { color: var(--good); }
+  .selftest-line.f { color: var(--bad); }
+  #selftestOut { max-height: 260px; overflow: auto; margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+
+  .footer { margin-top: 22px; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; color: var(--ink-dim); font-size: 12px; }
+  .footer .sp { flex: 1; }
+  .linkbtn { appearance: none; background: none; border: none; color: var(--accent); font: inherit; cursor: pointer; padding: 8px; min-height: 44px; letter-spacing: 0.06em; }
+  .linkbtn:hover { text-decoration: underline; }
+
+  .debugbar { display: none; margin-top: 14px; background: var(--panel-2); border: 1px dashed var(--copper-dim); border-radius: var(--radius); padding: 8px 12px; font-size: 12px; color: var(--ink-dim); max-height: 160px; overflow: auto; }
+  .debugbar.on { display: block; }
+  .debugbar div { white-space: pre-wrap; word-break: break-all; }
+
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <span class="logo"><span class="n">NIB</span>BLE</span>
+    <span class="tagline">bit &amp; byte bench &middot; decode a protocol byte</span>
+    <span class="ver" id="verTag">v0.0.0</span>
+  </header>
+
+  <div class="toolbar" role="group" aria-label="Global controls">
+    <span class="k">WIDTH</span>
+    <div class="seg" id="widthSeg" role="group" aria-label="Word width in bits">
+      <button type="button" data-w="8"  aria-pressed="true">8</button>
+      <button type="button" data-w="16" aria-pressed="false">16</button>
+      <button type="button" data-w="32" aria-pressed="false">32</button>
+      <button type="button" data-w="64" aria-pressed="false">64</button>
+    </div>
+    <span class="k" style="margin-left:8px">THEME</span>
+    <div class="seg" id="themeSeg" role="group" aria-label="Theme">
+      <button type="button" data-t="night" aria-pressed="true">Night</button>
+      <button type="button" data-t="day"   aria-pressed="false">Day</button>
+      <button type="button" data-t="hc"    aria-pressed="false">High&nbsp;Contrast</button>
+    </div>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="Instruments">
+    <button class="tab" id="tab-convert" role="tab" aria-selected="true"  aria-controls="panel-convert">CONVERT</button>
+    <button class="tab" id="tab-lattice" role="tab" aria-selected="false" aria-controls="panel-lattice">LATTICE</button>
+    <button class="tab" id="tab-crc"     role="tab" aria-selected="false" aria-controls="panel-crc">CRC / CHECKSUM</button>
+  </nav>
+
+  <main>
+    <!-- CONVERT -->
+    <section id="panel-convert" role="tabpanel" aria-labelledby="tab-convert">
+      <h2>CONVERT</h2>
+      <p class="hint">One value, every base. Type in any field. Values are masked to the selected word width.</p>
+      <div class="rows">
+        <div class="field-row"><label class="k" for="fHex">HEX</label><input type="text" id="fHex" inputmode="text" autocomplete="off" spellcheck="false" placeholder="0x"></div>
+        <div class="field-row"><label class="k" for="fDec">DEC</label><input type="text" id="fDec" class="mono-ink" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="0 (signed accepted)"></div>
+        <div class="field-row"><label class="k" for="fBin">BIN</label><input type="text" id="fBin" autocomplete="off" spellcheck="false" placeholder="0b"></div>
+        <div class="field-row"><label class="k" for="fOct">OCT</label><input type="text" id="fOct" class="mono-ink" autocomplete="off" spellcheck="false" placeholder="0o"></div>
+        <div class="field-row"><label class="k" for="fAsc">ASCII</label><input type="text" id="fAsc" class="mono-ink" autocomplete="off" spellcheck="false" placeholder="up to width/8 chars, MSB first"></div>
+      </div>
+      <div class="status" id="convStatus" role="status" aria-live="polite"></div>
+
+      <div class="readpanel" style="margin-top:16px">
+        <div class="readgrid">
+          <div class="cell"><div class="k">UNSIGNED</div><div class="v" id="rUnsigned">0</div></div>
+          <div class="cell"><div class="k">SIGNED (two's comp)</div><div class="v" id="rSigned">0</div></div>
+          <div class="cell"><div class="k">BYTE SWAP (endian flip)</div><div class="v" id="rSwap">0x00</div></div>
+          <div class="cell"><div class="k">SET BITS (popcount)</div><div class="v" id="rPop">0</div></div>
+          <div class="cell"><div class="k">BYTES (big-endian)</div><div class="v" id="rBytes">00</div></div>
+          <div class="cell"><div class="k">ASCII RENDER</div><div class="v" id="rAscii">.</div></div>
+          <div class="cell"><div class="k" id="rFloatK">IEEE-754</div><div class="v" id="rFloat">n/a</div></div>
+        </div>
+      </div>
+
+      <h2 style="margin-top:18px">BIT OPS</h2>
+      <p class="hint">Operations act on the working value and mask to the current width. The operand reads as hex unless you prefix it with 0b or 0o.</p>
+      <div class="toolbar" role="group" aria-label="Shift and rotate">
+        <button type="button" class="btn ghost" data-op="lsl">&laquo; LSL</button>
+        <button type="button" class="btn ghost" data-op="lsr">LSR &raquo;</button>
+        <button type="button" class="btn ghost" data-op="rol">ROL</button>
+        <button type="button" class="btn ghost" data-op="ror">ROR</button>
+        <label class="k" for="opShift">by</label>
+        <input type="text" id="opShift" value="1" inputmode="numeric" autocomplete="off" spellcheck="false" style="width:70px" aria-label="Shift or rotate amount">
+      </div>
+      <div class="toolbar" role="group" aria-label="Bitwise operations">
+        <label class="k" for="opOperand">operand</label>
+        <input type="text" id="opOperand" value="0xFF" autocomplete="off" spellcheck="false" class="mono-ink" style="max-width:220px" aria-label="Bitwise operand">
+        <button type="button" class="btn ghost" data-op="and">AND</button>
+        <button type="button" class="btn ghost" data-op="or">OR</button>
+        <button type="button" class="btn ghost" data-op="xor">XOR</button>
+        <button type="button" class="btn ghost" data-op="not">NOT</button>
+      </div>
+      <div class="status" id="opStatus" role="status" aria-live="polite"></div>
+    </section>
+
+    <!-- LATTICE -->
+    <section id="panel-lattice" role="tabpanel" aria-labelledby="tab-lattice" hidden>
+      <h2>LATTICE</h2>
+      <p class="hint">Toggle any bit. Paint named fields across bit ranges to decode a register or a protocol byte. Field map exports as JSON.</p>
+      <div class="lattice-scroll">
+        <div class="rail" id="latticeRail" aria-hidden="true"></div>
+        <div class="lattice" id="lattice" role="group" aria-label="Bit lattice, MSB on the left"></div>
+      </div>
+      <div class="toolbar" style="margin-top:14px">
+        <button type="button" class="btn ghost" id="latClear">Clear bits</button>
+        <button type="button" class="btn ghost" id="latFill">Set all</button>
+        <button type="button" class="btn ghost" id="latInvert">Invert</button>
+        <span class="sp" style="flex:1"></span>
+        <button type="button" class="btn ghost" id="fieldsExport">Export map</button>
+        <button type="button" class="btn ghost" id="fieldsImport">Import map</button>
+        <input type="file" id="fieldsFile" accept="application/json,.json" class="visually-hidden">
+      </div>
+
+      <h2 style="margin-top:18px">FIELDS</h2>
+      <p class="hint">Bit indices are inclusive. HI is the high bit, LO the low bit. Enum maps read like <code>0=idle,1=run,2=fault</code>.</p>
+      <div class="fieldeditor" id="fieldEditor"></div>
+      <button type="button" class="btn" id="addField" style="margin-top:10px">Add field</button>
+      <div class="status" id="fieldStatus" role="status" aria-live="polite"></div>
+
+      <div id="decodeWrap" style="margin-top:16px"></div>
+    </section>
+
+    <!-- CRC -->
+    <section id="panel-crc" role="tabpanel" aria-labelledby="tab-crc" hidden>
+      <h2>CRC / CHECKSUM</h2>
+      <p class="hint">Feed a byte string. The catalog runs standard CRCs; the custom row takes your own Rocksoft parameters.</p>
+      <div class="toolbar">
+        <span class="k">INPUT</span>
+        <div class="seg" id="crcMode" role="group" aria-label="Input interpretation">
+          <button type="button" data-m="hex"   aria-pressed="true">Hex bytes</button>
+          <button type="button" data-m="ascii" aria-pressed="false">ASCII text</button>
+        </div>
+        <span class="k" id="byteCount" style="margin-left:auto">0 bytes</span>
+      </div>
+      <textarea id="crcInput" spellcheck="false" placeholder="e.g. 31 32 33 34 35 36 37 38 39   (or switch to ASCII text)">123456789</textarea>
+      <div class="status" id="crcStatus" role="status" aria-live="polite"></div>
+
+      <h2 style="margin-top:16px">CRC CATALOG</h2>
+      <table class="grid" id="crcTable">
+        <thead><tr><th>Name</th><th>W</th><th>Poly</th><th>Init</th><th>Ref</th><th>Result</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <h2 style="margin-top:18px">CUSTOM CRC</h2>
+      <div class="fe-row" style="grid-template-columns: repeat(6, 1fr); gap:8px; align-items:end">
+        <div><label class="k" for="cW">Width</label>
+          <select id="cW"><option>8</option><option selected>16</option><option>32</option></select></div>
+        <div><label class="k" for="cPoly">Poly</label><input type="text" id="cPoly" value="0x1021" spellcheck="false"></div>
+        <div><label class="k" for="cInit">Init</label><input type="text" id="cInit" value="0xFFFF" spellcheck="false"></div>
+        <div><label class="k" for="cXor">XorOut</label><input type="text" id="cXor" value="0x0000" spellcheck="false"></div>
+        <div><label class="k" for="cRin">RefIn</label>
+          <select id="cRin"><option value="false" selected>false</option><option value="true">true</option></select></div>
+        <div><label class="k" for="cRout">RefOut</label>
+          <select id="cRout"><option value="false" selected>false</option><option value="true">true</option></select></div>
+      </div>
+      <div class="readpanel" style="margin-top:12px">
+        <div class="readgrid">
+          <div class="cell"><div class="k">CUSTOM CRC</div><div class="v" id="cResult">0x0000</div></div>
+        </div>
+      </div>
+
+      <h2 style="margin-top:18px">CHECKSUMS</h2>
+      <table class="grid" id="sumTable">
+        <thead><tr><th>Algorithm</th><th>Result</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <h2 style="margin-top:18px">VERIFY FRAME</h2>
+      <p class="hint">Paste a frame with its CRC already appended. NIBBLE splits off the trailing CRC bytes (width / 8 of them), recomputes over the rest, and reports pass or fail.</p>
+      <div class="toolbar">
+        <label class="k" for="vAlgo">algorithm</label>
+        <select id="vAlgo" style="max-width:230px"></select>
+        <span class="k">TRAILING CRC</span>
+        <div class="seg" id="vOrder" role="group" aria-label="Trailing CRC byte order">
+          <button type="button" data-o="be" aria-pressed="true">Big-endian</button>
+          <button type="button" data-o="le" aria-pressed="false">Little-endian</button>
+        </div>
+      </div>
+      <textarea id="vFrame" spellcheck="false" placeholder="frame bytes including the trailing CRC, e.g. 31 32 33 34 35 36 37 38 39 4B 37">31 32 33 34 35 36 37 38 39 4B 37</textarea>
+      <div class="readpanel" style="margin-top:12px">
+        <div class="readgrid">
+          <div class="cell"><div class="k">DATA (crc computed over this)</div><div class="v" id="vData">--</div></div>
+          <div class="cell"><div class="k">EXPECTED</div><div class="v" id="vExpected">--</div></div>
+          <div class="cell"><div class="k">FOUND (trailing bytes)</div><div class="v" id="vFound">--</div></div>
+          <div class="cell"><div class="k">VERDICT</div><div class="v verdict-idle" id="vVerdict">--</div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="footer">
+    <button type="button" class="linkbtn" id="selftestBtn">Run self-test</button>
+    <button type="button" class="linkbtn" id="aboutBtn">About</button>
+    <button type="button" class="linkbtn" id="debugBtn" aria-pressed="false">Debug: off</button>
+    <span class="sp"></span>
+    <span>Make. Hack. Learn. Share. Repeat.</span>
+  </div>
+
+  <div class="debugbar" id="debugBar" aria-live="off"></div>
+  <div class="visually-hidden" id="copyLive" role="status" aria-live="polite"></div>
+</div>
+
+<dialog id="aboutDlg">
+  <div class="dlg-head"><h3>NIBBLE</h3><button type="button" class="btn ghost" data-close>Close</button></div>
+  <div class="dlg-body">
+    <dl>
+      <dt>VERSION</dt><dd id="aboutVer">v1.0.0</dd>
+      <dt>WHAT</dt><dd>A bit-twiddling and protocol-decode bench. Convert between bases, flip endianness, read the bits as IEEE-754 floats, shift, rotate, and mask with bitwise ops, paint bitfields over a register, run configurable CRCs and checksums, and verify a frame's trailing CRC. Field Instrument FI-108 (number proposed).</dd>
+      <dt>LICENSE</dt><dd>GPL-3.0</dd>
+      <dt>LIBRARIES</dt><dd>None. Conversion, endianness, the CRC engine, and every checksum are hand-rolled in plain JavaScript. No external assets, no network, no build step.</dd>
+      <dt>RUNS FROM</dt><dd>Disk. Double-click the file. Nothing is sent anywhere; the field map persists only in this browser and in files you export.</dd>
+      <dt>FEEDBACK</dt><dd>Send a note by opening an issue on the project repository, or use the feedback address at greenshoegarage.com.</dd>
+    </dl>
+    <div id="selftestOut" hidden></div>
+  </div>
+</dialog>
+
+<dialog id="exportDlg">
+  <div class="dlg-head"><h3>EXPORT FIELD MAP</h3><button type="button" class="btn ghost" data-close>Close</button></div>
+  <div class="dlg-body">
+    <p class="hint">Copy this JSON, or it has been offered as a download.</p>
+    <textarea id="exportText" readonly spellcheck="false" style="min-height:160px"></textarea>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+/* NIBBLE :: application script :: single file, no dependencies */
+
+const VERSION = "1.2.0";
+const STORE_KEY = "nibble.state.v1";
+
+/* ---------- tiny helpers ---------- */
+const $ = (id) => document.getElementById(id);
+const clampInt = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+function log(...args) {
+  if (!state.debug) return;
+  const bar = $("debugBar");
+  const line = document.createElement("div");
+  line.textContent = "[" + new Date().toLocaleTimeString() + "] " + args.join(" ");
+  bar.appendChild(line);
+  while (bar.childNodes.length > 200) bar.removeChild(bar.firstChild);
+  bar.scrollTop = bar.scrollHeight;
+}
+
+/* copy that works from disk (file://), where the async clipboard API is often unavailable */
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (e) { /* fall through to the legacy path */ }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.setAttribute("readonly", "");
+    ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    const ok = typeof document.execCommand === "function" && document.execCommand("copy");
+    ta.remove();
+    return !!ok;
+  } catch (e) { log("copy failed:", e.message); return false; }
+}
+function flashCopied(btn, ok) {
+  const original = btn.dataset.label || "copy";
+  btn.textContent = ok ? "copied" : "no";
+  btn.classList.toggle("done", ok);
+  const live = $("copyLive");
+  if (live) live.textContent = ok ? "Copied to clipboard" : "Copy not available in this browser";
+  setTimeout(() => { btn.textContent = original; btn.classList.remove("done"); }, 1100);
+}
+function makeCopyBtn(text, label) {
+  const btn = document.createElement("button");
+  btn.type = "button"; btn.className = "copybtn"; btn.textContent = "copy";
+  btn.dataset.copyText = text; btn.dataset.label = "copy";
+  btn.setAttribute("aria-label", "Copy " + label);
+  return btn;
+}
+
+/* ---------- core numeric model ---------- */
+const state = {
+  value: 0n,        // BigInt, always masked to width
+  width: 8,         // 8 | 16 | 32 | 64
+  theme: "night",
+  debug: false,
+  fields: [],       // [{id,name,hi,lo,type,enums,color}]
+  crcMode: "hex",
+};
+
+const mask = () => (1n << BigInt(state.width)) - 1n;
+const setValue = (v) => { state.value = v & mask(); };
+
+function reflect(val, width) {
+  let out = 0n;
+  const w = BigInt(width);
+  for (let i = 0n; i < w; i++) if (val & (1n << i)) out |= 1n << (w - 1n - i);
+  return out;
+}
+function popcount(v) { let c = 0n; while (v > 0n) { c += v & 1n; v >>= 1n; } return c; }
+function byteSwap(v, width) {
+  const nBytes = width / 8;
+  let out = 0n;
+  for (let i = 0; i < nBytes; i++) {
+    const b = (v >> BigInt(8 * i)) & 0xFFn;
+    out |= b << BigInt(8 * (nBytes - 1 - i));
+  }
+  return out;
+}
+function toBytes(v, width) {
+  const n = width / 8, out = [];
+  for (let i = n - 1; i >= 0; i--) out.push(Number((v >> BigInt(8 * i)) & 0xFFn));
+  return out; // big-endian
+}
+function hexOf(v, width) { return "0x" + v.toString(16).toUpperCase().padStart(width / 4, "0"); }
+function signedOf(v, width) {
+  const top = 1n << BigInt(width - 1);
+  return (v & top) ? v - (1n << BigInt(width)) : v;
+}
+
+/* parse an operand, honoring an explicit 0x / 0b / 0o prefix, else hex */
+function parseAuto(str) {
+  const s = str.trim().replace(/[\s_]/g, "");
+  if (s === "") return 0n;
+  if (/^-?0[xX][0-9a-fA-F]+$/.test(s)) return BigInt(s);
+  if (/^-?0[bB][01]+$/.test(s)) return BigInt(s);
+  if (/^-?0[oO][0-7]+$/.test(s)) return BigInt(s);
+  if (!/^[0-9a-fA-F]+$/.test(s)) throw new Error("not a hex operand: " + str);
+  return BigInt("0x" + s);
+}
+
+/* shift / rotate / bitwise, all masked to width */
+function opCompute(v, op, n, operand, width) {
+  const W = BigInt(width);
+  const m = (1n << W) - 1n;
+  v &= m; operand &= m;
+  if (!Number.isFinite(n) || n < 0) n = 0;
+  switch (op) {
+    case "lsl": return (v << BigInt(Math.min(n, width))) & m;
+    case "lsr": return (v >> BigInt(Math.min(n, width))) & m;
+    case "rol": { const r = ((n % width) + width) % width; return ((v << BigInt(r)) | (v >> BigInt(width - r))) & m; }
+    case "ror": { const r = ((n % width) + width) % width; return ((v >> BigInt(r)) | (v << BigInt(width - r))) & m; }
+    case "and": return v & operand;
+    case "or":  return v | operand;
+    case "xor": return v ^ operand;
+    case "not": return (~v) & m;
+  }
+  return v;
+}
+
+/* IEEE-754 interpretation of the working bits */
+function f32FromBits(v) {
+  const dv = new DataView(new ArrayBuffer(4));
+  dv.setUint32(0, Number(v & 0xFFFFFFFFn), false);
+  return dv.getFloat32(0, false);
+}
+function f64FromBits(v) {
+  const dv = new DataView(new ArrayBuffer(8));
+  dv.setBigUint64(0, v & 0xFFFFFFFFFFFFFFFFn, false);
+  return dv.getFloat64(0, false);
+}
+function f16FromBits(v) {
+  const x = Number(v & 0xFFFFn);
+  const sign = (x >> 15) & 1;
+  const exp = (x >> 10) & 0x1F;
+  const frac = x & 0x3FF;
+  let val;
+  if (exp === 0) val = frac * Math.pow(2, -24);          // zero or subnormal
+  else if (exp === 0x1F) val = frac ? NaN : Infinity;    // Inf / NaN
+  else val = (1 + frac / 1024) * Math.pow(2, exp - 15);  // normal
+  return sign ? -val : val;
+}
+function fmtFloat(x) {
+  if (Number.isNaN(x)) return "NaN";
+  if (x === Infinity) return "+Inf";
+  if (x === -Infinity) return "-Inf";
+  if (Object.is(x, -0)) return "-0";
+  return String(x);
+}
+function floatReadout(v, width) {
+  if (width === 16) return { label: "FLOAT16 (half)", value: fmtFloat(f16FromBits(v)) };
+  if (width === 32) return { label: "FLOAT32 (single)", value: fmtFloat(f32FromBits(v)) };
+  if (width === 64) return { label: "FLOAT64 (double)", value: fmtFloat(f64FromBits(v)) };
+  return { label: "IEEE-754", value: "n/a (needs 16, 32, or 64 bits)" };
+}
+
+/* ---------- parameterized CRC (Rocksoft model) ---------- */
+function crc(bytes, p) {
+  const W = BigInt(p.width);
+  const m = (1n << W) - 1n;
+  const top = 1n << (W - 1n);
+  let reg = p.init & m;
+  for (const raw of bytes) {
+    const b = BigInt(p.refin ? Number(reflect(BigInt(raw & 0xFF), 8)) : (raw & 0xFF));
+    reg ^= (b << (W - 8n)) & m;
+    for (let i = 0; i < 8; i++) reg = (reg & top) ? ((reg << 1n) ^ p.poly) & m : (reg << 1n) & m;
+  }
+  let out = p.refout ? reflect(reg, p.width) : reg;
+  return (out ^ p.xorout) & m;
+}
+
+/* split a frame into data + trailing CRC, recompute, compare */
+function verifyFrame(frame, p, littleEndian) {
+  const nb = p.width / 8;
+  if (frame.length < nb + 1) return { error: "frame needs at least " + (nb + 1) + " bytes" };
+  const data = frame.slice(0, frame.length - nb);
+  const trailing = frame.slice(frame.length - nb);
+  const ordered = littleEndian ? trailing.slice().reverse() : trailing;
+  let found = 0n;
+  for (const b of ordered) found = (found << 8n) | BigInt(b & 0xFF);
+  const expected = crc(data, p);
+  return { ok: found === expected, expected, found, data, width: p.width };
+}
+
+const CRC_CATALOG = [
+  { name: "CRC-8/SMBUS",        width: 8,  poly: 0x07n,       init: 0x00n,       refin: false, refout: false, xorout: 0x00n },
+  { name: "CRC-8/MAXIM-DOW",    width: 8,  poly: 0x31n,       init: 0x00n,       refin: true,  refout: true,  xorout: 0x00n },
+  { name: "CRC-8/DARC",         width: 8,  poly: 0x39n,       init: 0x00n,       refin: true,  refout: true,  xorout: 0x00n },
+  { name: "CRC-16/CCITT-FALSE", width: 16, poly: 0x1021n,     init: 0xFFFFn,     refin: false, refout: false, xorout: 0x0000n },
+  { name: "CRC-16/XMODEM",      width: 16, poly: 0x1021n,     init: 0x0000n,     refin: false, refout: false, xorout: 0x0000n },
+  { name: "CRC-16/ARC",         width: 16, poly: 0x8005n,     init: 0x0000n,     refin: true,  refout: true,  xorout: 0x0000n },
+  { name: "CRC-16/MODBUS",      width: 16, poly: 0x8005n,     init: 0xFFFFn,     refin: true,  refout: true,  xorout: 0x0000n },
+  { name: "CRC-16/KERMIT",      width: 16, poly: 0x1021n,     init: 0x0000n,     refin: true,  refout: true,  xorout: 0x0000n },
+  { name: "CRC-16/USB",         width: 16, poly: 0x8005n,     init: 0xFFFFn,     refin: true,  refout: true,  xorout: 0xFFFFn },
+  { name: "CRC-32/ISO-HDLC",    width: 32, poly: 0x04C11DB7n, init: 0xFFFFFFFFn, refin: true,  refout: true,  xorout: 0xFFFFFFFFn },
+  { name: "CRC-32/BZIP2",       width: 32, poly: 0x04C11DB7n, init: 0xFFFFFFFFn, refin: false, refout: false, xorout: 0xFFFFFFFFn },
+  { name: "CRC-32C",            width: 32, poly: 0x1EDC6F41n, init: 0xFFFFFFFFn, refin: true,  refout: true,  xorout: 0xFFFFFFFFn },
+  { name: "CRC-32/MPEG-2",      width: 32, poly: 0x04C11DB7n, init: 0xFFFFFFFFn, refin: false, refout: false, xorout: 0x00000000n },
+];
+// check values over ASCII "123456789", used by self-test
+const CRC_CHECK = {
+  "CRC-8/SMBUS":0xF4n,"CRC-8/MAXIM-DOW":0xA1n,"CRC-8/DARC":0x15n,
+  "CRC-16/CCITT-FALSE":0x29B1n,"CRC-16/XMODEM":0x31C3n,"CRC-16/ARC":0xBB3Dn,
+  "CRC-16/MODBUS":0x4B37n,"CRC-16/KERMIT":0x2189n,"CRC-16/USB":0xB4C8n,
+  "CRC-32/ISO-HDLC":0xCBF43926n,"CRC-32/BZIP2":0xFC891918n,"CRC-32C":0xE3069283n,
+  "CRC-32/MPEG-2":0x0376E6E7n,
+};
+
+/* ---------- checksums ---------- */
+function sum8(bytes)  { let s = 0; for (const b of bytes) s = (s + (b & 0xFF)) & 0xFF; return s; }
+function xor8(bytes)  { let x = 0; for (const b of bytes) x ^= (b & 0xFF); return x & 0xFF; }
+function twos8(bytes) { return ((~sum8(bytes) + 1) & 0xFF); }
+function fletcher16(bytes) {
+  let s1 = 0, s2 = 0;
+  for (const b of bytes) { s1 = (s1 + (b & 0xFF)) % 255; s2 = (s2 + s1) % 255; }
+  return ((s2 << 8) | s1) & 0xFFFF;
+}
+function internet16(bytes) {
+  let sum = 0;
+  for (let i = 0; i < bytes.length; i += 2) {
+    const hi = bytes[i] & 0xFF;
+    const lo = (i + 1 < bytes.length) ? (bytes[i + 1] & 0xFF) : 0;
+    sum += (hi << 8) | lo;
+    sum = (sum & 0xFFFF) + (sum >>> 16);
+  }
+  while (sum >>> 16) sum = (sum & 0xFFFF) + (sum >>> 16);
+  return (~sum) & 0xFFFF;
+}
+
+/* ---------- parsing ---------- */
+function parseByBase(str, base) {
+  let s = str.trim();
+  if (s === "") return 0n;
+  let neg = false;
+  if (base === 10 && s.startsWith("-")) { neg = true; s = s.slice(1); }
+  s = s.replace(/^0[xXbBoO]/, "").replace(/[\s_]/g, "");
+  if (base === 16) s = s.replace(/^0[xX]/, "");
+  const prefix = base === 16 ? "0x" : base === 2 ? "0b" : base === 8 ? "0o" : "";
+  if (s === "") return 0n;
+  const clean = base === 10 ? s : prefix + s;
+  const v = BigInt(clean);
+  return neg ? -v : v;
+}
+function parseAsciiField(str, width) {
+  const maxChars = width / 8;
+  const chars = Array.from(str).slice(0, maxChars);
+  let v = 0n;
+  for (const ch of chars) {
+    const code = ch.codePointAt(0) & 0xFF;
+    v = (v << 8n) | BigInt(code);
+  }
+  return v;
+}
+function parseHexBytes(str) {
+  const cleaned = str.replace(/0[xX]/g, " ").replace(/[,;]/g, " ");
+  const toks = cleaned.trim().split(/\s+/).filter(Boolean);
+  const out = [];
+  if (toks.length === 1 && toks[0].length > 2 && toks[0].length % 2 === 0) {
+    // a run of hex with no separators
+    const run = toks[0];
+    for (let i = 0; i < run.length; i += 2) out.push(parseInt(run.slice(i, i + 2), 16));
+  } else {
+    for (const t of toks) {
+      if (!/^[0-9a-fA-F]{1,2}$/.test(t)) throw new Error("not a hex byte: " + t);
+      out.push(parseInt(t, 16));
+    }
+  }
+  if (out.some((b) => Number.isNaN(b) || b < 0 || b > 255)) throw new Error("byte out of range");
+  return out;
+}
+function asciiBytes(str) { return Array.from(str).map((c) => c.codePointAt(0) & 0xFF); }
+
+/* ---------- ASCII rendering ---------- */
+const CTRL = ["NUL","SOH","STX","ETX","EOT","ENQ","ACK","BEL","BS","HT","LF","VT","FF","CR","SO","SI",
+  "DLE","DC1","DC2","DC3","DC4","NAK","SYN","ETB","CAN","EM","SUB","ESC","FS","GS","RS","US"];
+function renderByte(b) {
+  if (b === 32) return "SP";
+  if (b === 127) return "DEL";
+  if (b < 32) return CTRL[b];
+  if (b > 127) return "0x" + b.toString(16).toUpperCase().padStart(2, "0");
+  return String.fromCharCode(b);
+}
+
+/* ---------- field colors ---------- */
+function fieldColor(i) {
+  const hue = (165 + i * 47) % 360;
+  return "hsl(" + hue + " 55% 52%)";
+}
+
+/* ============================================================= *
+ *  RENDER
+ * ============================================================= */
+function renderConvert(skipFocused) {
+  const v = state.value, w = state.width;
+  const set = (id, text) => { const el = $(id); if (el && el !== skipFocused) el.value = text; };
+  set("fHex", v.toString(16).toUpperCase());
+  set("fDec", v.toString(10));
+  set("fBin", v.toString(2));
+  set("fOct", v.toString(8));
+  const bytes = toBytes(v, w);
+  const asciiChars = bytes.map((b) => (b >= 32 && b < 127) ? String.fromCharCode(b) : "").join("");
+  set("fAsc", asciiChars);
+
+  $("rUnsigned").textContent = v.toString(10);
+  $("rSigned").textContent = signedOf(v, w).toString(10);
+  $("rSwap").textContent = hexOf(byteSwap(v, w), w);
+  $("rPop").textContent = popcount(v).toString() + " / " + w;
+  $("rBytes").textContent = bytes.map((b) => b.toString(16).toUpperCase().padStart(2, "0")).join(" ");
+  $("rAscii").textContent = bytes.map(renderByte).join(" ");
+  const fr = floatReadout(v, w);
+  $("rFloatK").textContent = fr.label;
+  $("rFloat").textContent = fr.value;
+}
+
+let latCells = [];
+let latFocus = 0;
+
+function updateBitCellState(cell, on) {
+  cell.setAttribute("aria-pressed", on ? "true" : "false");
+  cell.querySelector(".val").textContent = on ? "1" : "0";
+  cell.setAttribute("aria-label", "Bit " + cell.dataset.bit + ", value " + (on ? 1 : 0));
+}
+function toggleBit(bit) {
+  setValue(state.value ^ (1n << BigInt(bit)));
+  pushState();
+  const cell = latCells.find((c) => Number(c.dataset.bit) === bit);
+  if (cell) updateBitCellState(cell, ((state.value >> BigInt(bit)) & 1n) === 1n);
+  renderConvert();
+  renderDecode();
+}
+function moveLatticeFocus(j) {
+  if (j < 0 || j >= latCells.length) return;
+  latFocus = j;
+  latCells.forEach((c, k) => { c.tabIndex = k === j ? 0 : -1; });
+  latCells[j].focus();
+}
+
+function renderLattice() {
+  const w = state.width, v = state.value;
+  const lat = $("lattice"), rail = $("latticeRail");
+  lat.textContent = ""; rail.textContent = "";
+  latCells = [];
+
+  // field lookup per bit for rail coloring
+  const bitField = new Array(w).fill(-1);
+  state.fields.forEach((f, idx) => {
+    for (let b = f.lo; b <= f.hi && b < w; b++) if (bitField[b] === -1) bitField[b] = idx;
+  });
+
+  for (let bit = w - 1; bit >= 0; bit--) {
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "bitcell";
+    cell.dataset.bit = String(bit);
+    const on = ((v >> BigInt(bit)) & 1n) === 1n;
+    cell.setAttribute("aria-pressed", on ? "true" : "false");
+    cell.setAttribute("aria-label", "Bit " + bit + ", value " + (on ? 1 : 0));
+    const idx = document.createElement("span"); idx.className = "idx"; idx.textContent = String(bit);
+    const val = document.createElement("span"); val.className = "val"; val.textContent = on ? "1" : "0";
+    const wt = document.createElement("span"); wt.className = "wt";
+    wt.textContent = bit >= 20 ? "2^" + bit : String(1 << bit);
+    cell.append(idx, val, wt);
+    cell.addEventListener("click", () => toggleBit(bit));
+    cell.addEventListener("focus", () => { latFocus = latCells.indexOf(cell); });
+    cell.addEventListener("keydown", (e) => {
+      const i = latCells.indexOf(cell);
+      let j = null;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") j = i + 1;
+      else if (e.key === "ArrowLeft" || e.key === "ArrowUp") j = i - 1;
+      else if (e.key === "Home") j = 0;
+      else if (e.key === "End") j = latCells.length - 1;
+      if (j !== null) { e.preventDefault(); moveLatticeFocus(j); }
+    });
+    latCells.push(cell);
+    lat.appendChild(cell);
+
+    // rail segment aligned under the cell
+    const seg = document.createElement("div");
+    seg.className = "railseg";
+    seg.style.width = "42px";
+    const fi = bitField[bit];
+    if (fi >= 0) {
+      const f = state.fields[fi];
+      seg.style.background = f.color;
+      seg.style.color = "#0a0e13";
+      seg.textContent = (bit === f.hi) ? f.name : "";
+      if (bit === f.hi) seg.style.width = (42 * (f.hi - Math.max(f.lo, 0) + 1) + 4 * (f.hi - Math.max(f.lo, 0))) + "px";
+      else if (bit > f.lo && bit < f.hi) { seg.style.background = f.color; }
+    } else {
+      seg.style.background = "transparent";
+    }
+    rail.appendChild(seg);
+
+    if (bit % 8 === 0 && bit !== 0) {
+      const gap = document.createElement("div"); gap.className = "octet-gap"; lat.appendChild(gap);
+      const gap2 = document.createElement("div"); gap2.className = "octet-gap"; rail.appendChild(gap2);
+    }
+  }
+  latFocus = Math.min(latFocus, latCells.length - 1);
+  latCells.forEach((c, i) => { c.tabIndex = i === latFocus ? 0 : -1; });
+  renderFieldEditor();
+  renderDecode();
+}
+
+function renderFieldEditor() {
+  const host = $("fieldEditor");
+  host.textContent = "";
+  state.fields.forEach((f, idx) => {
+    const row = document.createElement("div");
+    row.className = "fe-row";
+
+    const name = document.createElement("input");
+    name.type = "text"; name.value = f.name; name.spellcheck = false;
+    name.setAttribute("aria-label", "Field name");
+    name.addEventListener("input", () => { f.name = name.value.slice(0, 24); pushState(); renderLattice(); });
+
+    const hi = document.createElement("input");
+    hi.type = "text"; hi.value = String(f.hi); hi.inputMode = "numeric";
+    hi.setAttribute("aria-label", "High bit");
+    hi.addEventListener("change", () => { f.hi = clampInt(parseInt(hi.value, 10) || 0, 0, state.width - 1); normalizeField(f); pushState(); renderLattice(); });
+
+    const lo = document.createElement("input");
+    lo.type = "text"; lo.value = String(f.lo); lo.inputMode = "numeric";
+    lo.setAttribute("aria-label", "Low bit");
+    lo.addEventListener("change", () => { f.lo = clampInt(parseInt(lo.value, 10) || 0, 0, state.width - 1); normalizeField(f); pushState(); renderLattice(); });
+
+    const type = document.createElement("select");
+    ["unsigned", "signed", "enum"].forEach((t) => {
+      const o = document.createElement("option"); o.value = t; o.textContent = t;
+      if (f.type === t) o.selected = true; type.appendChild(o);
+    });
+    type.setAttribute("aria-label", "Field type");
+    type.addEventListener("change", () => { f.type = type.value; pushState(); renderLattice(); });
+
+    const enums = document.createElement("input");
+    enums.type = "text"; enums.value = f.enums || ""; enums.spellcheck = false;
+    enums.placeholder = "0=idle,1=run";
+    enums.setAttribute("aria-label", "Enum map");
+    enums.addEventListener("input", () => { f.enums = enums.value; pushState(); renderDecode(); });
+
+    const del = document.createElement("button");
+    del.type = "button"; del.className = "btn ghost"; del.textContent = "Remove";
+    del.style.minHeight = "40px";
+    del.addEventListener("click", () => { state.fields.splice(idx, 1); pushState(); renderLattice(); });
+
+    const sw = document.createElement("span");
+    sw.className = "swatch"; sw.style.background = f.color;
+    name.prepend?.(sw); // some browsers; harmless fallback below
+    row.append(name, hi, lo, type, enums, del);
+    host.appendChild(row);
+  });
+}
+
+function normalizeField(f) {
+  if (f.lo > f.hi) { const t = f.lo; f.lo = f.hi; f.hi = t; }
+}
+
+function enumMap(str) {
+  const map = {};
+  (str || "").split(",").forEach((pair) => {
+    const m = pair.split("=");
+    if (m.length === 2) { const k = m[0].trim(); const val = m[1].trim(); if (k !== "") map[k] = val; }
+  });
+  return map;
+}
+
+function decodeField(f) {
+  const width = f.hi - f.lo + 1;
+  const fmask = (1n << BigInt(width)) - 1n;
+  const raw = (state.value >> BigInt(f.lo)) & fmask;
+  let decoded;
+  if (f.type === "signed") {
+    const top = 1n << BigInt(width - 1);
+    decoded = (raw & top) ? (raw - (1n << BigInt(width))) : raw;
+    decoded = decoded.toString(10);
+  } else if (f.type === "enum") {
+    const map = enumMap(f.enums);
+    const key = raw.toString(10);
+    decoded = (key in map) ? (map[key] + " (" + key + ")") : (key + " (unmapped)");
+  } else {
+    decoded = raw.toString(10);
+  }
+  return { raw, width, decoded, hex: "0x" + raw.toString(16).toUpperCase(), bin: raw.toString(2).padStart(width, "0") };
+}
+
+function renderDecode() {
+  const wrap = $("decodeWrap");
+  wrap.textContent = "";
+  // overlap warning
+  const seen = new Array(state.width).fill(false);
+  let overlap = false;
+  state.fields.forEach((f) => { for (let b = f.lo; b <= f.hi; b++) { if (seen[b]) overlap = true; seen[b] = true; } });
+  setStatus("fieldStatus", overlap ? "Note: some fields overlap. The lattice rail shows the first field on each bit." : "", overlap ? "warn" : "ok");
+
+  if (state.fields.length === 0) return;
+  const table = document.createElement("table");
+  table.className = "grid";
+  const thead = document.createElement("thead");
+  const htr = document.createElement("tr");
+  ["Field", "Bits", "Hex", "Binary", "Decoded"].forEach((h) => { const th = document.createElement("th"); th.textContent = h; htr.appendChild(th); });
+  thead.appendChild(htr); table.appendChild(thead);
+  const tb = document.createElement("tbody");
+  state.fields.forEach((f) => {
+    const d = decodeField(f);
+    const tr = document.createElement("tr");
+    const cName = document.createElement("td");
+    const sw = document.createElement("span"); sw.className = "swatch"; sw.style.background = f.color;
+    cName.appendChild(sw); cName.appendChild(document.createTextNode(f.name || "(unnamed)"));
+    const cBits = document.createElement("td"); cBits.textContent = f.hi === f.lo ? ("[" + f.hi + "]") : ("[" + f.hi + ":" + f.lo + "]");
+    const cHex = document.createElement("td"); cHex.className = "num"; cHex.textContent = d.hex;
+    const cBin = document.createElement("td"); cBin.className = "num"; cBin.textContent = d.bin;
+    const cDec = document.createElement("td"); cDec.className = "check"; cDec.textContent = d.decoded;
+    tr.append(cName, cBits, cHex, cBin, cDec);
+    tb.appendChild(tr);
+  });
+  table.appendChild(tb);
+  wrap.appendChild(table);
+}
+
+function renderCRC() {
+  let bytes, err = "";
+  try {
+    bytes = state.crcMode === "hex" ? parseHexBytes($("crcInput").value) : asciiBytes($("crcInput").value);
+  } catch (e) { err = e.message; bytes = null; }
+  $("byteCount").textContent = bytes ? (bytes.length + " byte" + (bytes.length === 1 ? "" : "s")) : "invalid";
+  setStatus("crcStatus", err ? ("Input error: " + err) : "", err ? "err" : "ok");
+
+  const tb = $("crcTable").querySelector("tbody");
+  tb.textContent = "";
+  for (const p of CRC_CATALOG) {
+    const tr = document.createElement("tr");
+    const val = bytes ? hexOf(crc(bytes, p), p.width) : "--";
+    const cells = [
+      p.name, String(p.width), "0x" + p.poly.toString(16).toUpperCase(),
+      "0x" + p.init.toString(16).toUpperCase(), (p.refin ? "in" : "") + (p.refout ? " out" : "") || "no",
+    ];
+    cells.forEach((c) => { const td = document.createElement("td"); td.textContent = c; tr.appendChild(td); });
+    const tdv = document.createElement("td"); tdv.className = "num";
+    if (val === "--") { tdv.textContent = "--"; }
+    else {
+      const row = document.createElement("div"); row.className = "vrow";
+      const span = document.createElement("span"); span.textContent = val;
+      row.append(span, makeCopyBtn(val, p.name + " result"));
+      tdv.appendChild(row);
+    }
+    tr.appendChild(tdv);
+    tb.appendChild(tr);
+  }
+  renderCustomCRC(bytes);
+  renderChecksums(bytes);
+  renderVerify();
+}
+
+function renderCustomCRC(bytes) {
+  const out = $("cResult");
+  try {
+    const p = {
+      width: parseInt($("cW").value, 10),
+      poly: parseByBase($("cPoly").value, 16),
+      init: parseByBase($("cInit").value, 16),
+      xorout: parseByBase($("cXor").value, 16),
+      refin: $("cRin").value === "true",
+      refout: $("cRout").value === "true",
+    };
+    out.textContent = bytes ? hexOf(crc(bytes, p), p.width) : "--";
+  } catch (e) { out.textContent = "param error"; }
+}
+
+function renderChecksums(bytes) {
+  const rows = [
+    ["Sum-8 (mod 256)", bytes ? "0x" + sum8(bytes).toString(16).toUpperCase().padStart(2, "0") : "--"],
+    ["XOR / LRC-8", bytes ? "0x" + xor8(bytes).toString(16).toUpperCase().padStart(2, "0") : "--"],
+    ["Two's complement of sum-8", bytes ? "0x" + twos8(bytes).toString(16).toUpperCase().padStart(2, "0") : "--"],
+    ["Fletcher-16", bytes ? "0x" + fletcher16(bytes).toString(16).toUpperCase().padStart(4, "0") : "--"],
+    ["Internet checksum (16-bit)", bytes ? "0x" + internet16(bytes).toString(16).toUpperCase().padStart(4, "0") : "--"],
+  ];
+  const tb = $("sumTable").querySelector("tbody");
+  tb.textContent = "";
+  for (const [name, val] of rows) {
+    const tr = document.createElement("tr");
+    const a = document.createElement("td"); a.textContent = name;
+    const b = document.createElement("td"); b.className = "num";
+    if (val === "--") { b.textContent = "--"; }
+    else {
+      const row = document.createElement("div"); row.className = "vrow";
+      const span = document.createElement("span"); span.textContent = val;
+      row.append(span, makeCopyBtn(val, name));
+      b.appendChild(row);
+    }
+    tr.append(a, b); tb.appendChild(tr);
+  }
+}
+
+/* ---------- verify frame ---------- */
+function populateVerifyAlgos() {
+  const sel = $("vAlgo");
+  if (sel.options.length) return;
+  CRC_CATALOG.forEach((p, i) => {
+    const o = document.createElement("option"); o.value = String(i); o.textContent = p.name; sel.appendChild(o);
+  });
+  const oc = document.createElement("option"); oc.value = "custom"; oc.textContent = "CUSTOM (from fields above)"; sel.appendChild(oc);
+  const mi = CRC_CATALOG.findIndex((p) => p.name === "CRC-16/MODBUS");
+  if (mi >= 0) sel.value = String(mi);
+}
+function currentVerifyParams() {
+  const sel = $("vAlgo").value;
+  if (sel === "custom") {
+    return {
+      width: parseInt($("cW").value, 10),
+      poly: parseByBase($("cPoly").value, 16),
+      init: parseByBase($("cInit").value, 16),
+      xorout: parseByBase($("cXor").value, 16),
+      refin: $("cRin").value === "true",
+      refout: $("cRout").value === "true",
+    };
+  }
+  return CRC_CATALOG[parseInt(sel, 10)] || CRC_CATALOG[0];
+}
+function setVerdict(msg) {
+  $("vData").textContent = "--"; $("vExpected").textContent = "--"; $("vFound").textContent = "--";
+  const vd = $("vVerdict"); vd.textContent = msg || "--"; vd.className = "v verdict-idle";
+}
+function renderVerify() {
+  const leBtn = document.querySelector('#vOrder button[data-o="le"]');
+  const le = leBtn && leBtn.getAttribute("aria-pressed") === "true";
+  let frame;
+  try { frame = parseHexBytes($("vFrame").value); } catch (e) { setVerdict(e.message); return; }
+  let p;
+  try { p = currentVerifyParams(); } catch (e) { setVerdict("param error"); return; }
+  const r = verifyFrame(frame, p, le);
+  if (r.error) { setVerdict(r.error); return; }
+  $("vData").textContent = r.data.length ? r.data.map((b) => b.toString(16).toUpperCase().padStart(2, "0")).join(" ") : "(empty)";
+  $("vExpected").textContent = hexOf(r.expected, r.width);
+  $("vFound").textContent = hexOf(r.found, r.width);
+  const vd = $("vVerdict");
+  vd.textContent = r.ok ? "PASS" : "FAIL";
+  vd.className = "v " + (r.ok ? "verdict-pass" : "verdict-fail");
+}
+
+function renderAll() {
+  $("verTag").textContent = "v" + VERSION;
+  renderConvert();
+  renderLattice();
+  renderCRC();
+}
+
+/* ---------- status ---------- */
+function setStatus(id, text, kind) {
+  const el = $(id);
+  el.textContent = text;
+  el.className = "status" + (kind ? " " + kind : "");
+}
+
+/* ---------- persistence ---------- */
+function pushState() {
+  try {
+    const snap = {
+      valueHex: state.value.toString(16),
+      width: state.width,
+      theme: state.theme,
+      debug: state.debug,
+      crcMode: state.crcMode,
+      fields: state.fields.map((f) => ({ name: f.name, hi: f.hi, lo: f.lo, type: f.type, enums: f.enums })),
+    };
+    localStorage.setItem(STORE_KEY, JSON.stringify(snap));
+  } catch (e) { log("persist blocked:", e.message); }
+}
+function loadState() {
+  let snap = null;
+  try { const raw = localStorage.getItem(STORE_KEY); if (raw) snap = JSON.parse(raw); }
+  catch (e) { log("load blocked:", e.message); }
+  if (!snap || typeof snap !== "object") return;
+  if ([8, 16, 32, 64].includes(snap.width)) state.width = snap.width;
+  if (["night", "day", "hc"].includes(snap.theme)) state.theme = snap.theme;
+  state.debug = !!snap.debug;
+  if (["hex", "ascii"].includes(snap.crcMode)) state.crcMode = snap.crcMode;
+  try { if (typeof snap.valueHex === "string") state.value = BigInt("0x" + (snap.valueHex || "0")) & mask(); } catch (e) {}
+  if (Array.isArray(snap.fields)) {
+    state.fields = snap.fields.filter((f) => f && typeof f === "object").slice(0, 32).map((f, i) => sanitizeField(f, i));
+  }
+}
+function sanitizeField(f, i) {
+  const hi = clampInt(parseInt(f.hi, 10) || 0, 0, 63);
+  const lo = clampInt(parseInt(f.lo, 10) || 0, 0, 63);
+  const type = ["unsigned", "signed", "enum"].includes(f.type) ? f.type : "unsigned";
+  return {
+    id: "f" + Date.now() + "_" + i,
+    name: (typeof f.name === "string" ? f.name : "field").slice(0, 24),
+    hi: Math.max(hi, lo), lo: Math.min(hi, lo),
+    type,
+    enums: typeof f.enums === "string" ? f.enums.slice(0, 200) : "",
+    color: fieldColor(i),
+  };
+}
+
+/* ---------- import / export ---------- */
+function exportMap() {
+  const payload = {
+    nibbleVersion: VERSION,
+    width: state.width,
+    valueHex: hexOf(state.value, state.width),
+    fields: state.fields.map((f) => ({ name: f.name, hi: f.hi, lo: f.lo, type: f.type, enums: f.enums })),
+  };
+  const text = JSON.stringify(payload, null, 2);
+  $("exportText").value = text;
+  // offer a download too
+  try {
+    const blob = new Blob([text], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "nibble-fieldmap.json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (e) { log("download blocked:", e.message); }
+  $("exportDlg").showModal();
+}
+function importMapText(text) {
+  let obj;
+  try { obj = JSON.parse(text); } catch (e) { setStatus("fieldStatus", "Import failed: not valid JSON.", "err"); return; }
+  if (!obj || typeof obj !== "object") { setStatus("fieldStatus", "Import failed: unexpected shape.", "err"); return; }
+  if ([8, 16, 32, 64].includes(obj.width)) { state.width = obj.width; syncWidthSeg(); }
+  if (typeof obj.valueHex === "string") { try { state.value = BigInt(obj.valueHex) & mask(); } catch (e) {} }
+  if (Array.isArray(obj.fields)) {
+    state.fields = obj.fields.filter((f) => f && typeof f === "object").slice(0, 32).map((f, i) => sanitizeField(f, i));
+  }
+  pushState(); renderAll();
+  setStatus("fieldStatus", "Imported " + state.fields.length + " field(s).", "ok");
+}
+
+/* ============================================================= *
+ *  SELF-TEST
+ * ============================================================= */
+function selftest() {
+  const results = [];
+  const assert = (name, cond) => results.push({ name, pass: !!cond });
+  const enc = (s) => Array.from(s, (c) => c.charCodeAt(0));
+  const m9 = enc("123456789");
+
+  // CRC catalog check values
+  for (const p of CRC_CATALOG) assert("CRC " + p.name, crc(m9, p) === CRC_CHECK[p.name]);
+
+  // conversions and masking
+  assert("mask 8-bit clamps 0x1FF", (0x1FFn & ((1n << 8n) - 1n)) === 0xFFn);
+  assert("signed 0xFF@8 == -1", signedOf(0xFFn, 8) === -1n);
+  assert("signed 0x80@8 == -128", signedOf(0x80n, 8) === -128n);
+  assert("signed 0x7F@8 == 127", signedOf(0x7Fn, 8) === 127n);
+  assert("byteSwap 0x1234@16 == 0x3412", byteSwap(0x1234n, 16) === 0x3412n);
+  assert("byteSwap 0x11223344@32 == 0x44332211", byteSwap(0x11223344n, 32) === 0x44332211n);
+  assert("popcount 0xF0 == 4", popcount(0xF0n) === 4n);
+  assert("reflect 0x01@8 == 0x80", reflect(0x01n, 8) === 0x80n);
+  assert("toBytes 0xAABB@16", toBytes(0xAABBn, 16).join(",") === "170,187");
+
+  // parsing
+  assert("parseHexBytes spaced", JSON.stringify(parseHexBytes("31 32 33")) === "[49,50,51]");
+  assert("parseHexBytes run", JSON.stringify(parseHexBytes("313233")) === "[49,50,51]");
+  assert("parseByBase dec neg", parseByBase("-1", 10) === -1n);
+  assert("parseAsciiField AB@16", parseAsciiField("AB", 16) === 0x4142n);
+
+  // checksums
+  assert("sum8 [1,2,3] == 6", sum8([1, 2, 3]) === 6);
+  assert("xor8 [1,2,3] == 0", xor8([1, 2, 3]) === 0);
+  assert("twos8 [1,2,3] == 0xFA", twos8([1, 2, 3]) === 0xFA);
+  assert("fletcher16 [1,2,3] == 0x0A06", fletcher16([1, 2, 3]) === 0x0A06);
+  assert("internet16 known vector", internet16([0x00, 0x01, 0xF2, 0x03, 0xF4, 0xF5, 0xF6, 0xF7]) === 0x220D);
+
+  // bitfield decode
+  const saveV = state.value, saveW = state.width, saveF = state.fields;
+  state.width = 8; state.value = 0b10110100n;
+  assert("decode unsigned [7:5]==5", decodeField({ hi: 7, lo: 5, type: "unsigned", enums: "" }).decoded === "5");
+  assert("decode signed [3:0]==4", decodeField({ hi: 3, lo: 0, type: "signed", enums: "" }).decoded === "4");
+  assert("decode enum maps", decodeField({ hi: 1, lo: 0, type: "enum", enums: "0=zero,1=one" }).decoded === "zero (0)");
+  state.value = saveV; state.width = saveW; state.fields = saveF;
+
+  // bit ops
+  assert("LSL 0x01<<1 == 0x02", opCompute(0x01n, "lsl", 1, 0n, 8) === 0x02n);
+  assert("LSL 0x80<<1 @8 == 0x00", opCompute(0x80n, "lsl", 1, 0n, 8) === 0x00n);
+  assert("LSR 0x80>>1 == 0x40", opCompute(0x80n, "lsr", 1, 0n, 8) === 0x40n);
+  assert("ROL 0x81 rol1 @8 == 0x03", opCompute(0x81n, "rol", 1, 0n, 8) === 0x03n);
+  assert("ROR 0x01 ror1 @8 == 0x80", opCompute(0x01n, "ror", 1, 0n, 8) === 0x80n);
+  assert("ROL by width is identity", opCompute(0xA5n, "rol", 8, 0n, 8) === 0xA5n);
+  assert("AND 0xF0 & 0x3C == 0x30", opCompute(0xF0n, "and", 0, 0x3Cn, 8) === 0x30n);
+  assert("OR 0xF0 | 0x0F == 0xFF", opCompute(0xF0n, "or", 0, 0x0Fn, 8) === 0xFFn);
+  assert("XOR 0xFF ^ 0x0F == 0xF0", opCompute(0xFFn, "xor", 0, 0x0Fn, 8) === 0xF0n);
+  assert("NOT 0x0F @8 == 0xF0", opCompute(0x0Fn, "not", 0, 0n, 8) === 0xF0n);
+  assert("parseAuto 0b1010 == 10", parseAuto("0b1010") === 10n);
+  assert("parseAuto A5 == 0xA5", parseAuto("A5") === 0xA5n);
+
+  // IEEE-754
+  assert("f32 0x3F800000 == 1.0", f32FromBits(0x3F800000n) === 1);
+  assert("f32 0xC0000000 == -2.0", f32FromBits(0xC0000000n) === -2);
+  assert("f32 pi bits ~ 3.14159", Math.abs(f32FromBits(0x40490FDBn) - 3.14159265) < 1e-4);
+  assert("f32 0x7F800000 == +Inf", f32FromBits(0x7F800000n) === Infinity);
+  assert("f64 0x3FF0..00 == 1.0", f64FromBits(0x3FF0000000000000n) === 1);
+  assert("f64 pi bits ~ 3.14159", Math.abs(f64FromBits(0x400921FB54442D18n) - Math.PI) < 1e-12);
+  assert("f16 0x3C00 == 1.0", f16FromBits(0x3C00n) === 1);
+  assert("f16 0xC000 == -2.0", f16FromBits(0xC000n) === -2);
+  assert("f16 0x7C00 == +Inf", f16FromBits(0x7C00n) === Infinity);
+  assert("f16 0x0000 == 0", f16FromBits(0x0000n) === 0);
+
+  // verify frame
+  const modbus = CRC_CATALOG.find((p) => p.name === "CRC-16/MODBUS");
+  const goodFrame = m9.concat([0x4B, 0x37]);              // "123456789" + big-endian MODBUS CRC 0x4B37
+  const vg = verifyFrame(goodFrame, modbus, false);
+  assert("verify good frame passes", vg.ok === true && vg.expected === 0x4B37n);
+  const badFrame = m9.concat([0x4B, 0x38]);
+  assert("verify corrupted frame fails", verifyFrame(badFrame, modbus, false).ok === false);
+  const leFrame = m9.concat([0x37, 0x4B]);                // same CRC, little-endian trailing
+  assert("verify little-endian trailing", verifyFrame(leFrame, modbus, true).ok === true);
+  assert("verify too-short frame reports error", !!verifyFrame([0x01], modbus, false).error);
+
+  const passed = results.filter((r) => r.pass).length;
+  const failed = results.length - passed;
+
+  const out = $("selftestOut");
+  out.hidden = false;
+  out.textContent = "";
+  const head = document.createElement("div");
+  head.className = "selftest-line " + (failed ? "f" : "p");
+  head.textContent = passed + " passed, " + failed + " failed  (" + results.length + " assertions)";
+  out.appendChild(head);
+  results.filter((r) => !r.pass).forEach((r) => {
+    const l = document.createElement("div"); l.className = "selftest-line f"; l.textContent = "FAIL  " + r.name; out.appendChild(l);
+  });
+  if (!failed) {
+    const l = document.createElement("div"); l.className = "selftest-line p"; l.textContent = "All core assertions hold."; out.appendChild(l);
+  }
+  log("self-test:", passed + "/" + results.length);
+  $("aboutDlg").showModal();
+  return { passed, failed, total: results.length };
+}
+
+/* ============================================================= *
+ *  WIRING
+ * ============================================================= */
+function syncWidthSeg() {
+  document.querySelectorAll("#widthSeg button").forEach((b) => {
+    b.setAttribute("aria-pressed", parseInt(b.dataset.w, 10) === state.width ? "true" : "false");
+  });
+}
+function applyTheme() {
+  document.documentElement.setAttribute("data-theme", state.theme);
+  document.querySelectorAll("#themeSeg button").forEach((b) => {
+    b.setAttribute("aria-pressed", b.dataset.t === state.theme ? "true" : "false");
+  });
+}
+
+function wire() {
+  // width
+  document.querySelectorAll("#widthSeg button").forEach((b) => {
+    b.addEventListener("click", () => {
+      state.width = parseInt(b.dataset.w, 10);
+      setValue(state.value);
+      state.fields.forEach((f) => { f.hi = clampInt(f.hi, 0, state.width - 1); f.lo = clampInt(f.lo, 0, state.width - 1); normalizeField(f); });
+      syncWidthSeg(); pushState(); renderAll();
+    });
+  });
+  // theme
+  document.querySelectorAll("#themeSeg button").forEach((b) => {
+    b.addEventListener("click", () => { state.theme = b.dataset.t; applyTheme(); pushState(); });
+  });
+  // tabs
+  const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+  function selectTab(tab) {
+    tabs.forEach((t) => {
+      const sel = t === tab;
+      t.setAttribute("aria-selected", sel ? "true" : "false");
+      t.tabIndex = sel ? 0 : -1;
+      $(t.getAttribute("aria-controls")).hidden = !sel;
+    });
+  }
+  tabs.forEach((t, i) => {
+    t.tabIndex = i === 0 ? 0 : -1;
+    t.addEventListener("click", () => selectTab(t));
+    t.addEventListener("keydown", (e) => {
+      let j = null;
+      if (e.key === "ArrowRight") j = (i + 1) % tabs.length;
+      if (e.key === "ArrowLeft") j = (i - 1 + tabs.length) % tabs.length;
+      if (e.key === "Home") j = 0;
+      if (e.key === "End") j = tabs.length - 1;
+      if (j !== null) { e.preventDefault(); tabs[j].focus(); selectTab(tabs[j]); }
+    });
+  });
+
+  // converter inputs
+  const bind = (id, base) => {
+    const el = $(id);
+    el.addEventListener("input", () => {
+      try {
+        let v;
+        if (id === "fAsc") v = parseAsciiField(el.value, state.width);
+        else v = parseByBase(el.value, base);
+        if (base === 10 && v < 0n) v = v & mask(); else setValue(v);
+        if (id !== "fAsc" && base === 10) setValue(v);
+        else if (id !== "fAsc") setValue(parseByBase(el.value, base));
+        else setValue(v);
+        el.setAttribute("aria-invalid", "false");
+        setStatus("convStatus", "", "ok");
+        pushState();
+        renderConvert(el);
+        renderLattice();
+      } catch (err) {
+        el.setAttribute("aria-invalid", "true");
+        setStatus("convStatus", "Cannot parse " + id.replace("f", "") + ": " + err.message, "err");
+      }
+    });
+  };
+  bind("fHex", 16); bind("fDec", 10); bind("fBin", 2); bind("fOct", 8); bind("fAsc", 0);
+
+  // lattice bulk ops
+  $("latClear").addEventListener("click", () => { setValue(0n); pushState(); renderAll(); });
+  $("latFill").addEventListener("click", () => { setValue(mask()); pushState(); renderAll(); });
+  $("latInvert").addEventListener("click", () => { setValue(~state.value); pushState(); renderAll(); });
+
+  // bit ops
+  document.querySelectorAll("[data-op]").forEach((b) => {
+    b.addEventListener("click", () => {
+      const op = b.dataset.op;
+      let n = parseInt($("opShift").value, 10);
+      if (!Number.isFinite(n)) n = 0;
+      let operand = 0n;
+      const needsOperand = (op === "and" || op === "or" || op === "xor");
+      try {
+        if (needsOperand) operand = parseAuto($("opOperand").value);
+        setValue(opCompute(state.value, op, n, operand, state.width));
+        setStatus("opStatus", "", "ok");
+        pushState(); renderAll();
+      } catch (e) {
+        setStatus("opStatus", e.message, "err");
+      }
+    });
+  });
+
+  // fields
+  $("addField").addEventListener("click", () => {
+    if (state.fields.length >= 32) { setStatus("fieldStatus", "Field limit reached (32).", "warn"); return; }
+    const i = state.fields.length;
+    state.fields.push({ id: "f" + Date.now() + "_" + i, name: "field" + i, hi: Math.min(state.width - 1, 0), lo: 0, type: "unsigned", enums: "", color: fieldColor(i) });
+    // recolor for stable ordering
+    state.fields.forEach((f, k) => { f.color = fieldColor(k); });
+    pushState(); renderLattice();
+  });
+  $("fieldsExport").addEventListener("click", exportMap);
+  $("fieldsImport").addEventListener("click", () => $("fieldsFile").click());
+  $("fieldsFile").addEventListener("change", (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => importMapText(String(reader.result));
+    reader.readAsText(file);
+    e.target.value = "";
+  });
+
+  // CRC
+  document.querySelectorAll("#crcMode button").forEach((b) => {
+    b.addEventListener("click", () => {
+      state.crcMode = b.dataset.m;
+      document.querySelectorAll("#crcMode button").forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+      pushState(); renderCRC();
+    });
+  });
+  $("crcInput").addEventListener("input", renderCRC);
+  ["cW", "cPoly", "cInit", "cXor", "cRin", "cRout"].forEach((id) => $(id).addEventListener("input", () => {
+    const bytes = (() => { try { return state.crcMode === "hex" ? parseHexBytes($("crcInput").value) : asciiBytes($("crcInput").value); } catch (e) { return null; } })();
+    renderCustomCRC(bytes);
+    renderVerify();
+  }));
+
+  // verify frame
+  $("vFrame").addEventListener("input", renderVerify);
+  $("vAlgo").addEventListener("change", renderVerify);
+  document.querySelectorAll("#vOrder button").forEach((b) => {
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#vOrder button").forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+      renderVerify();
+    });
+  });
+
+  // copy buttons (delegated; works for static readouts and rendered tables)
+  document.addEventListener("click", async (e) => {
+    const btn = e.target.closest(".copybtn");
+    if (!btn) return;
+    let text = btn.dataset.copyText;
+    if (btn.dataset.copyFor) { const el = document.getElementById(btn.dataset.copyFor); if (el) text = el.textContent; }
+    if (text == null || text === "--") { flashCopied(btn, false); return; }
+    const ok = await copyText(text);
+    flashCopied(btn, ok);
+  });
+
+  // footer
+  $("selftestBtn").addEventListener("click", selftest);
+  $("aboutBtn").addEventListener("click", () => { $("selftestOut").hidden = true; $("aboutDlg").showModal(); });
+  $("debugBtn").addEventListener("click", () => {
+    state.debug = !state.debug;
+    $("debugBar").classList.toggle("on", state.debug);
+    $("debugBtn").setAttribute("aria-pressed", state.debug ? "true" : "false");
+    $("debugBtn").textContent = "Debug: " + (state.debug ? "on" : "off");
+    pushState();
+  });
+  document.querySelectorAll("dialog [data-close]").forEach((b) => b.addEventListener("click", (e) => e.target.closest("dialog").close()));
+  document.querySelectorAll("dialog").forEach((d) => d.addEventListener("click", (e) => { if (e.target === d) d.close(); }));
+
+  // sync crc mode buttons to loaded state
+  document.querySelectorAll("#crcMode button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.m === state.crcMode ? "true" : "false"));
+}
+
+/* ---------- boot ---------- */
+function installCopyForId(id, label) {
+  const v = document.getElementById(id);
+  if (!v || (v.parentElement && v.parentElement.classList.contains("vrow"))) return;
+  const btn = document.createElement("button");
+  btn.type = "button"; btn.className = "copybtn"; btn.textContent = "copy"; btn.dataset.label = "copy";
+  btn.dataset.copyFor = id;
+  btn.setAttribute("aria-label", "Copy " + label);
+  const row = document.createElement("div"); row.className = "vrow";
+  v.replaceWith(row); row.appendChild(v); row.appendChild(btn);
+}
+
+loadState();
+$("aboutVer").textContent = "v" + VERSION;
+applyTheme();
+syncWidthSeg();
+$("debugBar").classList.toggle("on", state.debug);
+$("debugBtn").setAttribute("aria-pressed", state.debug ? "true" : "false");
+$("debugBtn").textContent = "Debug: " + (state.debug ? "on" : "off");
+[
+  ["rUnsigned", "unsigned value"], ["rSigned", "signed value"], ["rSwap", "byte-swapped value"],
+  ["rPop", "set-bit count"], ["rBytes", "byte breakout"], ["rAscii", "ASCII render"],
+  ["rFloat", "float value"], ["cResult", "custom CRC result"],
+  ["vExpected", "expected CRC"], ["vFound", "found CRC"], ["vData", "frame data"],
+].forEach(([id, label]) => installCopyForId(id, label));
+populateVerifyAlgos();
+wire();
+renderAll();
+log("NIBBLE v" + VERSION + " ready. width=" + state.width);
+</script>
+</body>
+</html>
